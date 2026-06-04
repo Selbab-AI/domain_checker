@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Domain Finder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --border: #222222;
+    --accent: #c8f04a;
+    --text: #f0f0f0;
+    --muted: #555;
+    --available: #c8f04a;
+    --taken: #ff4a4a;
+    --checking: #f0a030;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    padding: 40px 24px;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 4px; }
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    margin-bottom: 32px;
+    letter-spacing: 0.05em;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* API KEY BANNER */
+  .api-banner {
+    background: #1a1400;
+    border: 1px solid #f0a030;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .api-banner.set {
+    background: #0d1a00;
+    border-color: var(--accent);
+  }
+
+  .api-banner label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--checking);
+    white-space: nowrap;
+  }
+
+  .api-banner.set label { color: var(--accent); }
+
+  .api-key-input {
+    flex: 1;
+    min-width: 200px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    padding: 8px 12px;
+    outline: none;
+  }
+
+  .api-key-input:focus { border-color: var(--accent); }
+
+  .api-note {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .api-note a { color: var(--checking); }
+
+  /* AI SECTION */
+  .ai-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 28px;
+  }
+
+  .prompt-row { display: flex; gap: 10px; align-items: flex-start; }
+
+  .prompt-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.2s;
+    resize: none;
+    min-height: 70px;
+  }
+
+  .prompt-input:focus { border-color: var(--accent); }
+  .prompt-input::placeholder { color: var(--muted); }
+
+  .btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: #000;
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 12px 22px;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 12px 22px;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+  .ai-thinking {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--checking);
+    margin-top: 12px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+  .ai-thinking.visible { display: flex; }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--checking);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .generated-names { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .name-chip {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .name-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .name-chip.selected { background: rgba(200,240,74,0.1); border-color: var(--accent); color: var(--accent); }
+
+  .chip-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+  textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    padding: 12px 16px;
+    resize: vertical;
+    min-height: 90px;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 12px;
+  }
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--muted); }
+
+  .tld-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+
+  .tld-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    padding: 6px 12px;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .tld-btn.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 500; }
+
+  .presets { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .preset-btn {
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    padding: 5px 10px;
+    transition: all 0.15s;
+  }
+  .preset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .results { margin-top: 24px; display: flex; flex-direction: column; gap: 6px; }
+
+  .result-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+  .result-item.available { border-color: var(--available); }
+  .result-item.taken { border-color: #1e1212; }
+
+  .domain-name { font-family: 'DM Mono', monospace; font-size: 0.9rem; }
+
+  .status {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+  .status.available { background: rgba(200,240,74,0.15); color: var(--available); }
+  .status.taken { background: rgba(255,74,74,0.08); color: var(--taken); }
+  .status.checking { background: rgba(240,160,48,0.1); color: var(--checking); }
+
+  .progress { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--muted); margin-top: 8px; }
+
+  .summary {
+    margin-top: 20px; padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .summary strong { color: var(--accent); }
+
+  .note { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<h1>Domain <span>Finder</span></h1>
+<p class="subtitle">// AI NAME GENERATION + BULK DNS AVAILABILITY CHECK</p>
+
+<!-- API KEY -->
+<div class="api-banner" id="apiBanner">
+  <label id="apiLabel">// ANTHROPIC API KEY</label>
+  <input class="api-key-input" type="password" id="apiKeyInput" placeholder="sk-ant-..." oninput="handleKeyInput()" />
+  <p class="api-note">Get your key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys. Only used in your browser, never stored.</p>
+</div>
+
+<!-- AI SECTION -->
+<div class="ai-section">
+  <div class="section-label">// Step 1 — Describe your business, get 10 name ideas</div>
+  <div class="prompt-row">
+    <textarea class="prompt-input" id="promptInput" placeholder="e.g. Executive search firm specialising in fintech and payments. Senior hires across UAE, Singapore, UK and US. Premium, global, credible."></textarea>
+    <button class="btn" onclick="generateNames()" id="generateBtn">Generate</button>
+  </div>
+  <div class="ai-thinking" id="aiThinking">
+    <div class="spinner"></div>
+    <span>Generating name ideas...</span>
+  </div>
+  <div class="generated-names" id="generatedNames"></div>
+  <div class="chip-actions" id="chipActions" style="display:none">
+    <button class="btn" onclick="checkSelected()">Check Selected Domains</button>
+    <button class="btn-outline" onclick="selectAll()">Select All</button>
+    <button class="btn-outline" onclick="clearSelection()">Clear</button>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- MANUAL SECTION -->
+<div class="manual-section">
+  <div class="section-label">// Or enter names manually</div>
+  <div class="presets">
+    <button class="preset-btn" onclick="loadPreset('exec')">Exec Search</button>
+    <button class="preset-btn" onclick="loadPreset('payments')">Payments Theme</button>
+    <button class="preset-btn" onclick="loadPreset('latin')">Latin/Premium</button>
+  </div>
+  <textarea id="namesInput" placeholder="One name per line (no TLD needed):
+veruspartners
+altumSearch
+clearwaysearch"></textarea>
+  <div class="section-label" style="margin-bottom:10px">// TLDs to check</div>
+  <div class="tld-row" id="tldRow"></div>
+  <button class="btn" onclick="checkManual()" id="checkBtn">Check Availability</button>
+  <p class="note">// DNS lookup via Cloudflare — NXDOMAIN = likely available. Fast and accurate, not 100% definitive.</p>
+</div>
+
+<div class="progress" id="progress"></div>
+<div class="results" id="results"></div>
+<div id="summary"></div>
+
+<script>
+const TLDS = ['.com', '.co.uk', '.io', '.co', '.partners', '.search', '.agency'];
+let activeTlds = new Set(['.com', '.co.uk']);
+let selectedNames = new Set();
+
+function handleKeyInput() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  const banner = document.getElementById('apiBanner');
+  const label = document.getElementById('apiLabel');
+  if (key.startsWith('sk-ant-') && key.length > 20) {
+    banner.classList.add('set');
+    label.textContent = '// API KEY SET ✓';
+  } else {
+    banner.classList.remove('set');
+    label.textContent = '// ANTHROPIC API KEY';
+  }
+}
+
+function getKey() { return document.getElementById('apiKeyInput').value.trim(); }
+
+const tldRow = document.getElementById('tldRow');
+TLDS.forEach(tld => {
+  const btn = document.createElement('button');
+  btn.className = 'tld-btn' + (activeTlds.has(tld) ? ' active' : '');
+  btn.textContent = tld;
+  btn.onclick = () => {
+    if (activeTlds.has(tld)) { activeTlds.delete(tld); btn.classList.remove('active'); }
+    else { activeTlds.add(tld); btn.classList.add('active'); }
+  };
+  tldRow.appendChild(btn);
+});
+
+const presets = {
+  exec: `veruspartners\naltumSearch\nclearwaysearch\nmeridianSearch\nstrataSearch\nfortisSearch\ncaleopartners\nvelnpartners`,
+  payments: `conduitpartners\nclearwaypartners\ncorridorpartners\nnexumpartners\npassagepartners\nsettlrSearch`,
+  latin: `veruspartners\naltumSearch\nfortisTalent\nnorvapartners\nceleropartners\nheliopartners`
+};
+
+function loadPreset(key) { document.getElementById('namesInput').value = presets[key]; }
+
+async function generateNames() {
+  const key = getKey();
+  if (!key) { alert('Paste your Anthropic API key at the top first'); return; }
+  const prompt = document.getElementById('promptInput').value.trim();
+  if (!prompt) { alert('Describe your business first'); return; }
+
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('aiThinking').classList.add('visible');
+  document.getElementById('generatedNames').innerHTML = '';
+  document.getElementById('chipActions').style.display = 'none';
+  selectedNames = new Set();
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: `You are a business naming expert. Generate exactly 10 creative, memorable business names for the following:\n\n${prompt}\n\nRules:\n- Names should be single words or two words joined (no spaces) — suitable for a domain\n- No generic words like "global", "solutions", "group", "tech"\n- Mix of: coined words, Latin/Romance roots, industry metaphors, abstract concepts\n- Each name should feel premium and work internationally\n- No names that are already major brands\n\nRespond ONLY with valid JSON, no markdown, no backticks:\n{"names":[{"name":"ExampleName","rationale":"One sentence why this works"}]}`
+        }]
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content.find(b => b.type === 'text')?.text || '';
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    const namesEl = document.getElementById('generatedNames');
+
+    parsed.names.forEach(item => {
+      const chip = document.createElement('div');
+      chip.className = 'name-chip';
+      chip.dataset.name = item.name;
+      chip.title = item.rationale;
+      chip.innerHTML = `<span>${item.name}</span><span style="display:none;font-size:0.65rem">✓</span>`;
+      chip.onclick = () => toggleChip(chip, item.name);
+      namesEl.appendChild(chip);
+    });
+
+    document.getElementById('chipActions').style.display = 'flex';
+  } catch(e) {
+    document.getElementById('generatedNames').innerHTML = `<span style="font-family:DM Mono,monospace;font-size:0.8rem;color:var(--taken)">Error: ${e.message}</span>`;
+  }
+
+  document.getElementById('generateBtn').disabled = false;
+  document.getElementById('aiThinking').classList.remove('visible');
+}
+
+function toggleChip(chip, name) {
+  if (selectedNames.has(name)) {
+    selectedNames.delete(name);
+    chip.classList.remove('selected');
+    chip.querySelector('span:last-child').style.display = 'none';
+  } else {
+    selectedNames.add(name);
+    chip.classList.add('selected');
+    chip.querySelector('span:last-child').style.display = 'inline';
+  }
+}
+
+function selectAll() {
+  document.querySelectorAll('.name-chip').forEach(chip => {
+    selectedNames.add(chip.dataset.name);
+    chip.classList.add('selected');
+    chip.querySelector('span:last-child').style.display = 'inline';
+  });
+}
+
+function clearSelection() {
+  selectedNames.clear();
+  document.querySelectorAll('.name-chip').forEach(chip => {
+    chip.classList.remove('selected');
+    chip.querySelector('span:last-child').style.display = 'none';
+  });
+}
+
+async function checkSelected() {
+  if (!selectedNames.size) { alert('Select at least one name'); return; }
+  await runCheck([...selectedNames].map(n => n.toLowerCase().replace(/\s+/g,'')));
+}
+
+async function checkManual() {
+  const names = document.getElementById('namesInput').value
+    .split('\n').map(n => n.trim().toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9-]/g,'')).filter(Boolean);
+  if (!names.length) return;
+  await runCheck(names);
+}
+
+async function runCheck(names) {
+  if (!activeTlds.size) { alert('Select at least one TLD'); return; }
+  document.getElementById('checkBtn').disabled = true;
+  const resultsEl = document.getElementById('results');
+  const progressEl = document.getElementById('progress');
+  resultsEl.innerHTML = '';
+  document.getElementById('summary').innerHTML = '';
+
+  const pairs = [];
+  names.forEach(n => [...activeTlds].forEach(tld => pairs.push(n + tld)));
+
+  const items = {};
+  pairs.forEach(domain => {
+    const el = document.createElement('div');
+    el.className = 'result-item';
+    el.innerHTML = `<span class="domain-name">${domain}</span><span class="status checking">CHECKING...</span>`;
+    resultsEl.appendChild(el);
+    items[domain] = el;
+  });
+
+  let done = 0, available = 0;
+  for (let i = 0; i < pairs.length; i += 4) {
+    await Promise.all(pairs.slice(i, i+4).map(async domain => {
+      const status = await checkDomain(domain);
+      done++;
+      progressEl.textContent = `Checking... ${done}/${pairs.length}`;
+      const el = items[domain];
+      const s = el.querySelector('.status');
+      if (status === 'available') {
+        el.classList.add('available'); s.className = 'status available'; s.textContent = '✓ AVAILABLE'; available++;
+      } else if (status === 'taken') {
+        el.classList.add('taken'); s.className = 'status taken'; s.textContent = '✗ TAKEN';
+      } else {
+        s.textContent = '? UNKNOWN';
+      }
+    }));
+  }
+
+  progressEl.textContent = '';
+  document.getElementById('checkBtn').disabled = false;
+  document.getElementById('summary').innerHTML = `<div class="summary">Checked <strong>${pairs.length}</strong> domains — <strong>${available} available</strong>, ${pairs.length - available} taken.</div>`;
+}
+
+async function checkDomain(domain) {
+  try {
+    const r = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=A`, { headers: { 'Accept': 'application/dns-json' } });
+    const d = await r.json();
+    if (d.Status === 3) return 'available';
+    if (d.Answer?.length) return 'taken';
+    const nr = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=NS`, { headers: { 'Accept': 'application/dns-json' } });
+    const nd = await nr.json();
+    if (nd.Status === 3) return 'available';
+    if (nd.Answer?.length) return 'taken';
+    return 'available';
+  } catch { return 'unknown'; }
+}
+</script>
+</body>
+</html>
